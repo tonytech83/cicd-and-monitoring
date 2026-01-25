@@ -1,0 +1,24 @@
+services:
+  mariadb:
+    image: mariadb:latest
+    container_name: mariadb
+    environment:
+      MARIADB_USER: app_user
+      MARIADB_PASSWORD: Parolka-12345
+      MARIADB_DATABASE: counters
+      MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./db/db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3307:3306"
+
+  nodejs-app:
+    image: nodejs-app
+    ports: 
+      - "5000:5000"
+    depends_on:
+      - mariadb
+
+volumes:
+  mariadb_data:

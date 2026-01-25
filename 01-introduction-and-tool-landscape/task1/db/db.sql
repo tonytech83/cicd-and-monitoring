@@ -1,0 +1,14 @@
+SET NAMES 'utf8';
+
+DROP DATABASE IF EXISTS counters;
+
+CREATE DATABASE counters CHARACTER SET utf8 COLLATE utf8_general_ci;
+
+GRANT ALL ON counters.* TO 'app_user'@'%' IDENTIFIED BY 'Parolka-12345';
+
+USE counters;
+
+CREATE TABLE hits (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
