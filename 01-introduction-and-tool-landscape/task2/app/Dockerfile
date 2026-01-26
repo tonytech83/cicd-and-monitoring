@@ -13,7 +13,7 @@ WORKDIR /build
 RUN go mod init go-counter
 
 # Copy the entire application source
-COPY . .
+COPY main.go .
 
 # Download dependencies
 RUN go mod tidy
@@ -24,8 +24,15 @@ RUN go build -o app .
 # Final lightweight stage
 FROM alpine:3.21 AS final
 
+# Create non-root user
+RUN addgroup -g 10001 -S appgroup && \
+    adduser -u 10001 -S appuser -G appgroup
+
 # Copy the compiled binary from the builder stage
 COPY --from=builder /build/app /bin/app
+
+# Switch to the non-root user
+USER appuser
 
 # Expose the application's port
 EXPOSE 8000

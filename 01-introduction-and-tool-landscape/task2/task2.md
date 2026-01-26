@@ -2,9 +2,9 @@
 
 Prepare a set of two container images. One of the images should host the application, and the other – the database. Pick up one of the pairs – Python + Redis, Python + MariaDB, Go + Redis, or Go + MariaDB. Then spin up two containers out of them. You could implement it by following the manual approach or by automating the solution to some extent, including by using Vagrant.
 
-*Note that the application should be adjusted a bit to be able to communicate with the remote database
+_Note that the application should be adjusted a bit to be able to communicate with the remote database
 Note that depending on the selection, one of the images could be a standard one (if using Redis)
-Note that the Docker (or the container runtime/platform of choice) could be in a VM or on your host*
+Note that the Docker (or the container runtime/platform of choice) could be in a VM or on your host_
 
 ## Solution
 
@@ -40,6 +40,7 @@ Note that the Docker (or the container runtime/platform of choice) could be in a
 ```
 
 ### Create Dockerfile for GO application
+
 This section defines a multi-stage build process to construct a lightweight and efficient container image. It first compiles the Go binary in a builder stage with all necessary dependencies, then copies only the final executable to a minimal Alpine Linux system to keep the production image small.
 
 ```dockerfile
@@ -58,7 +59,7 @@ WORKDIR /build
 RUN go mod init go-counter
 
 # Copy the entire application source
-COPY . .
+COPY main.go .
 
 # Download dependencies
 RUN go mod tidy
@@ -69,8 +70,15 @@ RUN go build -o app .
 # Final lightweight stage
 FROM alpine:3.21 AS final
 
+# Create non-root user
+RUN addgroup -g 10001 -S appgroup && \
+    adduser -u 10001 -S appuser -G appgroup
+
 # Copy the compiled binary from the builder stage
 COPY --from=builder /build/app /bin/app
+
+# Switch to the non-root user
+USER appuser
 
 # Expose the application's port
 EXPOSE 8000
@@ -78,13 +86,17 @@ EXPOSE 8000
 # Run the application
 CMD ["bin/app"]
 ```
+
 Execute command:
+
 ```sh
-docker build -t go-app:latest . 
+docker build -t go-app:latest .
 ```
 
 ### Create docker-compose file for app and db
+
 This configuration file orchestrates the environment by defining the Go application and Redis database as interacting services. It creates a dedicated bridge network to allow the containers to communicate securely and maps the required ports so the application is accessible from the host machine.
+
 ```yml
 services:
   go-app:
@@ -101,7 +113,7 @@ services:
     container_name: redis-db
     image: redis:latest
     ports:
-      - '6379:6379'
+      - "6379:6379"
     networks:
       - app-network
 
@@ -109,8 +121,11 @@ networks:
   app-network:
     driver: bridge
 ```
+
 ### Deployment
+
 This step executes the Docker Compose command to build and launch the defined services in detached mode. By running this, both the application and database containers spin up in the background, establishing the full stack with a single command.
+
 ```sh
 docker-compose up -d
 ```

@@ -1,4 +1,4 @@
-FROM node:22
+FROM node:current-alpine3.23
 
 # Set workdir
 WORKDIR /app
@@ -6,8 +6,15 @@ WORKDIR /app
 # Install the required packages
 RUN npm install express mariadb
 
-# Copy all filse to workdir
-COPY . .
+# Copy only app.js file to workdir
+COPY app.js .
+
+# Create non-root user
+RUN addgroup -g 10001 -S appgroup && \
+    adduser -u 10001 -S appuser -G appgroup
+
+# Switch to the non-root user
+USER appuser
 
 EXPOSE 5000
 
