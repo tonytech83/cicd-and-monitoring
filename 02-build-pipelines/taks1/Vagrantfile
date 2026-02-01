@@ -1,0 +1,221 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+$common = <<SCRIPT
+echo '* Add hosts ...'
+echo '127.0.0.1       localhost' > /etc/hosts
+echo '' >> /etc/hosts
+echo 'ff02::1 ip6-allnodes' >> /etc/hosts
+echo 'ff02::2 ip6-allrouters' >> /etc/hosts
+echo '' >> /etc/hosts
+echo '192.168.99.101 docker.homework.lab docker' >> /etc/hosts
+echo '192.168.99.102 jenkins.homework.lab jenkins' >> /etc/hosts
+
+SCRIPT
+
+$docker = <<SCRIPT
+
+# 1. Update the repositories and install the required packages
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl
+
+# 2. Add Docker official GPG key
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# 3. Add the repository to Apt sources
+sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/debian
+Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+Components: stable
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+
+# 4. Update repositories
+sudo apt-get update
+
+# 5. Install the latest version
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# 6. Add vagrant user to docker group
+sudo usermod -aG docker vagrant
+
+SCRIPT
+
+$gitea = <<SCRIPT
+
+# 1. Create gitea folder
+sudo mkdir -p /gitea
+sudo chown vagrant:vagrant /gitea
+
+# 2. Copy docker compose file
+sudo cp -r /vagrant/gitea-compose.yaml /gitea
+
+# 3. Create a dedicated network for Gitea components
+docker network create gitea
+
+# 4. Apply docker compose file
+cd /gitea
+docker compose -f gitea-compose.yaml up -d
+
+SCRIPT
+
+$git = <<SCRIPT
+
+# 1. Update the repositories and install Git
+sudo apt update
+sudo apt install -y git
+
+# 2. Configure Git (globally)
+sudo -u vagrant git config --global user.name "tonytech"
+sudo -u vagrant git config --global user.email "tonytech@tonytech.xyz"
+
+SCRIPT
+
+$registry = <<SCRIPT
+
+# 1. Install local Docker registry
+docker run -d -p 5000:5000 --restart always --name registry registry:2
+
+# 2. Add Gitea and Docker registry via HTTP to allow communication with Docker
+sudo tee /etc/docker/daemon.json  <<EOF
+{
+    "insecure-registries" : [ "192.168.99.101:5000", "192.168.99.101:3000" ]
+}
+EOF
+
+# 3. Reload and restart the service
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+
+SCRIPT
+
+$agent = <<SCRIPT
+# Additional settings on Docker vm to be able to work with Jenkins
+
+# 1. Install the required Java packages
+sudo apt update
+sudo apt install -y openjdk-21-jre
+
+# 2. Create new user for Jenkins
+sudo useradd -m jenkins
+
+# 3. Set password
+sudo passwd jenkins
+JENKINS_PASSWORD=$(cat /vagrant/jenkins_password.txt)
+echo "jenkins:$JENKINS_PASSWORD" | sudo chpasswd
+echo "Jenkins user password has been set successfully!"
+
+# 4. Grant the new user sudo permissions 
+echo 'jenkins ALL=(ALL)    NOPASSWD: ALL' | sudo tee /etc/sudoers.d/jenkins
+
+# 5. Add the jenkins user to the docker group
+sudo usermod -aG docker jenkins
+
+SCRIPT
+
+$jenkins = <<SCRIPT
+
+# 1. Update the repositories and install the required packages
+sudo apt update
+sudo apt install -y fontconfig openjdk-21-jre
+
+# 2. Add Jenkins official GPG key
+sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+
+# 3. Add Jenkins repository
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc]" https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+
+# 4. Update the repositories and install Jenkins
+sudo apt update
+sudo apt install -y jenkins
+
+# 5. Wait for Jenkins to start and get initial password
+echo "Waiting for Jenkins to start..."
+sleep 30
+echo "========================================="
+echo "Jenkins Initial Admin Password:"
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+echo "========================================="
+
+# 6. Set password for jenkins user
+JENKINS_PASSWORD=$(cat /vagrant/jenkins_password.txt)
+echo "jenkins:$JENKINS_PASSWORD" | sudo chpasswd
+echo "Jenkins user password has been set successfully!"
+
+# 7. Generate ssh key
+sudo -u jenkins mkdir -p /var/lib/jenkins/.ssh
+sudo -u jenkins ssh-keygen -t rsa -b 3072 -N "" -f /var/lib/jenkins/.ssh/id_rsa
+
+SCRIPT
+
+$app = <<SCRIPT
+
+# 1. Create folder inside VM
+sudo mkdir -p /nodejs-counter
+
+# 2. Copy local nodejs-counter/ to /nodejs-counter
+cp -r /vagrant/nodejs-counter/* /nodejs-counter
+
+# 3. Install Node.js and npm
+sudo apt-get update
+sudo apt-get install -y nodejs npm
+
+# 4. Initialize npm and install Express
+cd /nodejs-counter
+npm init -y
+npm install express
+
+# 5. Git initialize
+git init .
+git branch -M main
+
+# 6. Add .gitignore
+tee /nodejs-counter/.gitignore <<EOF
+node_modules/
+package-lock.json
+EOF
+
+# 7. Chande ownership of /nodejs-counter
+sudo chown -R vagrant:vagrant /nodejs-counter
+
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "cdsn/debian13"
+  config.vm.box_version = "1.0.0"
+
+  config.vm.define "docker" do |docker|
+    docker.vm.hostname = "docker.homework.lab"
+    docker.vm.network "private_network", ip: "192.168.99.101"
+
+    docker.vm.provider "virtualbox" do |vb|
+      vb.memory = "4096"
+      vb.cpus = 2
+    end
+
+    docker.vm.provision "shell", inline: $common
+    docker.vm.provision "shell", inline: $docker
+    docker.vm.provision "shell", inline: $gitea
+    docker.vm.provision "shell", inline: $registry
+    docker.vm.provision "shell", inline: $agent
+    docker.vm.provision "shell", inline: $git
+    docker.vm.provision "shell", inline: $app
+  end
+
+  config.vm.define "jenkins" do |jenkins|
+    jenkins.vm.hostname = "jenkins.homework.lab"
+    jenkins.vm.network "private_network", ip: "192.168.99.102"
+
+    jenkins.vm.provider "virtualbox" do |vb|
+      vb.memory = "4096"
+      vb.cpus = 2
+    end
+
+    jenkins.vm.provision "shell", inline: $common
+    jenkins.vm.provision "shell", inline: $jenkins
+  end
+
+end

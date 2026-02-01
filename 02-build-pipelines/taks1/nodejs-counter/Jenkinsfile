@@ -1,0 +1,30 @@
+pipeline {
+    agent any
+    
+    environment {
+        REGISTRY = '192.168.99.101:5000'
+        IMAGE_NAME = 'nodejs-counter'
+    }
+    
+    stages {
+        stage('Build') {
+            steps {
+                script {
+                    SHORT_SHA = env.GIT_COMMIT.take(10)
+                    docker.build("${REGISTRY}/${IMAGE_NAME}:${SHORT_SHA}")
+                    docker.build("${REGISTRY}/${IMAGE_NAME}:latest")
+                }
+            }
+        }
+        
+        stage('Push') {
+            steps {
+                script {
+                    SHORT_SHA = env.GIT_COMMIT.take(10)
+                    docker.image("${REGISTRY}/${IMAGE_NAME}:${SHORT_SHA}").push()
+                    docker.image("${REGISTRY}/${IMAGE_NAME}:latest").push()
+                }
+            }
+        }
+    }
+}
