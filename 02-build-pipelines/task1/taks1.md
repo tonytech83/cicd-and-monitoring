@@ -1,6 +1,6 @@
 ## Task
 
-Create a **CI pipeline** (using **Gitea** or **Jenkins**) for a **NodeJS** application (in the supporting files) that **checks out** the code from **Gitea** repository, **builds** a container image (two tags -- **latest** and **commit SHA**), and **pushes** it to a local **Docker Registry** (insecure and without authentication)
+Create a **CI pipeline** using **Jenkins** for a **NodeJS** application (in the supporting files) that **checks out** the code from **Gitea** repository, **builds** a container image (two tags -- **latest** and **commit SHA**), and **pushes** it to a local **Docker Registry** (insecure and without authentication)
 
 ## Solution
 
