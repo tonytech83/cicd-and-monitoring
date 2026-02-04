@@ -65,8 +65,8 @@ SCRIPT
 $git = <<SCRIPT
 
 # 1. Update the repositories and install Git
-sudo apt update
-sudo apt install -y git
+sudo apt-get update
+sudo apt-get install -y git
 
 # 2. Configure Git (globally)
 sudo -u vagrant git config --global user.name "tonytech"
@@ -96,8 +96,8 @@ $agent = <<SCRIPT
 # Additional settings on Docker vm to be able to work with Jenkins
 
 # 1. Install the required Java packages
-sudo apt update
-sudo apt install -y openjdk-21-jre
+sudo apt-get update
+sudo apt-get install -y openjdk-21-jre
 
 # 2. Create new user for Jenkins
 sudo useradd -m jenkins
@@ -119,8 +119,8 @@ SCRIPT
 $jenkins = <<SCRIPT
 
 # 1. Update the repositories and install the required packages
-sudo apt update
-sudo apt install -y fontconfig openjdk-21-jre
+sudo apt-get update
+sudo apt-get install -y fontconfig openjdk-21-jre
 
 # 2. Add Jenkins official GPG key
 sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
@@ -129,8 +129,8 @@ sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian
 echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc]" https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
 
 # 4. Update the repositories and install Jenkins
-sudo apt update
-sudo apt install -y jenkins
+sudo apt-get update
+sudo apt-get install -y jenkins
 
 # 5. Wait for Jenkins to start and get initial password
 echo "Waiting for Jenkins to start..."
@@ -186,6 +186,11 @@ SCRIPT
 Vagrant.configure("2") do |config|
   config.vm.box = "cdsn/debian13"
   config.vm.box_version = "1.0.0"
+
+  # Disable vagrant-vbguest plugin
+  if Vagrant.has_plugin?("vagrant-vbguest")
+    config.vbguest.auto_update = false
+  end
 
   config.vm.define "docker" do |docker|
     docker.vm.hostname = "docker.homework.lab"
