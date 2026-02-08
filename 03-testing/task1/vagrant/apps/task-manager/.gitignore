@@ -1,0 +1,8 @@
+services/monitor/go.sum
+services/frontend/test/node_modules/
+services/frontend/test/test-results/
+services/archiver/target/
+services/api/__pycache__/
+services/api/.pytest_cache/
+services/api/.venv/
+services/api/tests/__pycache__/
