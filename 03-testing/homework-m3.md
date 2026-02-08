@@ -32,5 +32,4 @@ Prepare a document that shows what you accomplished and how you did it. It can i
 
 ## Solution
 1. [Task 1](./task1/task1.md)
-2. [Task 2](./task1/task2.md)
-3. [Task 3](./task1/task3.md)
+2. [Task 2](./task2/task2.md)

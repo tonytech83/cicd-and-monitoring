@@ -1,0 +1,4 @@
+services/api/__pycache__/
+services/api/.pytest_cache/
+services/api/.venv/
+services/api/tests/__pycache__/
