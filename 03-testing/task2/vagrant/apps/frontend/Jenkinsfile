@@ -1,87 +1,64 @@
 pipeline {
-    agent
-    {
-        label 'docker'
-    }
+    agent none
+
     environment {
         IMAGE_TAG = "${env.BUILD_NUMBER}"
-        REGISTRY_URL = "192.168.56.12:5000"
+        REGISTRY_URL = "192.168.99.101:5000"
     }
+
     stages {
-        stage('Test the API') {
-            when { 
-                changeset "services/api/**" 
-            }
-            agent {
-                docker {
-                    image 'python:3.12-slim'
-                    // This ensures the container runs as the same user as Jenkins 
-                    // to avoid permission issues with the workspace
-                    args '-u root' 
+        stage('Test the Frontend Smoke Tests') {
+            agent { label 'docker' }
+            steps {
+                script {
+                    docker.image('node:20-slim').inside('-u root') {
+                        sh '''
+                        apt-get update && apt-get install -y curl
+                        cd test/
+                        chmod +x smoke_test.sh
+                        ./smoke_test.sh
+                        '''
+                    }
                 }
             }
+        }
+
+        stage('Test the Frontend Playwright') {
+            agent { label 'docker' }
+            steps {
+                script {
+                    docker.image('mcr.microsoft.com/playwright:v1.50.1-noble').inside('-u root --ipc=host') {
+                        sh '''
+                        cd test/
+                        npm ci
+                        npx playwright install --with-deps chromium
+                        npx playwright test test_ui.spec.js
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Build the Frontend') {
+            agent { label 'docker' }
             steps {
                 sh '''
-                # We are now INSIDE the python container
-                # The workspace is automatically mounted at /home/jenkins/agent/workspace/...
-                cd services/api
-                pip install flask redis pytest
-                python3 -m pytest tests/
+                # build image with current image tag
+                docker build -t ${REGISTRY_URL}/task-manager-frontend:${IMAGE_TAG} .
+
+                # tag image with 'latest' tag
+                docker tag ${REGISTRY_URL}/task-manager-frontend:${IMAGE_TAG} ${REGISTRY_URL}/task-manager-frontend:latest
+
+                # push both tags
+                docker push ${REGISTRY_URL}/task-manager-frontend:${IMAGE_TAG}
+                docker push ${REGISTRY_URL}/task-manager-frontend:latest
                 '''
             }
         }
-        stage('Build the API') {
-            when { 
-                changeset "services/api/**" 
-            }
+
+        stage('Clean') {
+            agent { label 'docker' }
             steps {
-                sh '''
-				cd services/api
-				docker build -t ${REGISTRY_URL}/task-manager-api:${IMAGE_TAG} .
-				docker push ${REGISTRY_URL}/task-manager-api:${IMAGE_TAG}
-				'''
-            }
-        }
-        stage('Build the Archiver') {
-            when { 
-                changeset "services/archiver/**" 
-            }
-            steps {
-                sh '''
-				cd services/archiver
-				docker build -t ${REGISTRY_URL}/task-manager-archiver:${IMAGE_TAG} .
-				docker push ${REGISTRY_URL}/task-manager-archiver:${IMAGE_TAG}
-				'''
-            }
-        }
-        stage('Build the Frontend') {
-            when { 
-                changeset "services/frontend/**" 
-            }
-            steps {
-                sh '''
-				cd services/frontend
-				docker build -t ${REGISTRY_URL}/task-manager-frontend:${IMAGE_TAG} .
-				docker push ${REGISTRY_URL}/task-manager-frontend:${IMAGE_TAG}
-				'''
-            }
-        }
-        stage('Build the Monitor') {
-            when { 
-                changeset "services/monitor/**" 
-            }
-            steps {
-                sh '''
-				cd services/monitor
-				docker build -t ${REGISTRY_URL}/task-manager-monitor:${IMAGE_TAG} .
-				docker push ${REGISTRY_URL}/task-manager-monitor:${IMAGE_TAG}
-				'''
-            }
-        }
-        stage('Clean')
-        {
-            steps
-            {
                 cleanWs()
             }
         }
