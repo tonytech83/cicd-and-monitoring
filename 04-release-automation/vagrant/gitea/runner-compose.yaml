@@ -1,0 +1,22 @@
+networks:
+  gitea:
+    external: true
+
+volumes:
+  gitea-runner-1:
+    driver: local
+
+services:
+  runner:
+    image: gitea/act_runner:latest
+    container_name: gitea-runner-1
+    environment:
+      - GITEA_INSTANCE_URL=http://192.168.56.12:3000
+      - GITEA_RUNNER_REGISTRATION_TOKEN=<GITEA-TOKEN>
+      - GITEA_RUNNER_NAME=lab-runner
+    networks:
+      - gitea
+    volumes:
+      - gitea-runner-1:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
