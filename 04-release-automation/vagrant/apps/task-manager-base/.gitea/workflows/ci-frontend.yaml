@@ -8,8 +8,8 @@ on:
   push:
     branches: [main]
     paths:
-      - '.gitea/workflows/ci-frontend.yaml'
-      - 'services/frontend/**'
+      - ".gitea/workflows/ci-frontend.yaml"
+      - "services/frontend/**"
   workflow_dispatch:
 
 jobs:
@@ -63,6 +63,6 @@ jobs:
       - name: Deploy Docker Compose
         run: |
           hash=${{env.GITHUB_SHA}}
-          export FRONTEND_TAG=${hash::10}
+          export FRONTEND_TAG=${hash::10} 
           echo "Using tag $FRONTEND_TAG"
           docker compose up -d --no-deps frontend

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# 
+#
 # Create Jenkins credentials
-# 
+#
 
 CRED_ID=$1
 CRED_NAME=$2
@@ -14,6 +14,6 @@ cat <<EOF | java -jar /home/vagrant/jenkins-cli.jar -s http://192.168.56.11:8080
   <id>${CRED_ID}</id>
   <description>${CRED_NAME} username and password pair</description>
   <username>${CRED_NAME}</username>
-  <password>${CRED_PASS}</password>                                                                                                             
+  <password>${CRED_PASS}</password>
 </com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl>
 EOF
