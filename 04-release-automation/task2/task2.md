@@ -31,7 +31,7 @@ Add deployment job to the rest of the **Gitea** pipelines from **part 1**
 
 ### API
 
-Add deployment job and add monitoring of workflow itself in paths to trigger start of action
+Add deployment job and new line workflow to monitor also itself, this will trigger the action if there is a change in `.gitea/workflows/ci-api.yaml`
 
 ```yaml
 # ... rest of code
@@ -60,7 +60,7 @@ Add deployment job and add monitoring of workflow itself in paths to trigger sta
 
 ### Archiver
 
-Add deployment job and add monitoring of workflow itself in paths to trigger start of action
+Add deployment job and new line workflow to monitor also itself, this will trigger the action if there is a change in `.gitea/workflows/ci-archiver.yaml`
 
 ```yaml
 # ... rest of code
@@ -88,7 +88,7 @@ Add deployment job and add monitoring of workflow itself in paths to trigger sta
 
 ### Frontend
 
-Add deployment job and add monitoring of workflow itself in paths to trigger start of action
+Add deployment job and new line workflow to monitor also itself, this will trigger the action if there is a change in `.gitea/workflows/ci-frontend.yaml`
 
 ```yaml
 # ... rest of code
@@ -119,7 +119,7 @@ Add deployment job and add monitoring of workflow itself in paths to trigger sta
 
 ### Monitor
 
-Add deployment job and add monitoring of workflow itself in paths to trigger start of action
+Add deployment job and new line workflow to monitor also itself, this will trigger the action if there is a change in `.gitea/workflows/ci-monitor.yaml`
 
 ```yaml
 # ... rest of code
@@ -144,4 +144,4 @@ Add deployment job and add monitoring of workflow itself in paths to trigger sta
           docker compose up -d --no-deps monitor
 ```
 
-TODO: Take a picture !!!
+![pic-5](../media/pic-5.png)
