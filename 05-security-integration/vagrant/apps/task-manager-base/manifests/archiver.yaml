@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: task-manager-archiver
+  labels:
+    app: task-manager
+    service: archiver
+spec:
+  containers:
+  - name: archiver
+    image: 192.168.56.12:5000/task-manager-archiver:latest
+    env:
+    - name: REDIS_HOST
+      value: "db"

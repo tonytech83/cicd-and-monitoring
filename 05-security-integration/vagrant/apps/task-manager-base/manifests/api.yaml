@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: task-manager-api
+  labels:
+    app: task-manager
+    service: api
+spec:
+  containers:
+  - name: api
+    image: 192.168.56.12:5000/task-manager-api:latest
+    ports:
+    - containerPort: 5000
+    env:
+    - name: REDIS_HOST
+      value: "db"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  selector:
+    service: api
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP

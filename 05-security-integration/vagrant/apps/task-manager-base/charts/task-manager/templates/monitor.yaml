@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Release.Name }}-monitor
+  labels:
+    app: {{ .Release.Name }}-task-manager
+    service: monitor
+spec:
+  containers:
+  - name: monitor
+    image: {{ .Values.global.registry }}/task-manager-monitor:{{ .Values.monitor.tag }}
+    ports:
+    - containerPort: 8080
+    env:
+    - name: REDIS_HOST
+      value: "{{ .Release.Name }}-db"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-monitor
+spec:
+  selector:
+    app: {{ .Release.Name }}-task-manager
+    service: monitor
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP

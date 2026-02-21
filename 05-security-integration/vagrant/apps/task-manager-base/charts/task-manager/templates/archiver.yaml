@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Release.Name }}-archiver
+  labels:
+    app: {{ .Release.Name }}-task-manager
+    service: archiver
+spec:
+  containers:
+  - name: archiver
+    image: {{ .Values.global.registry }}/task-manager-archiver:{{ .Values.archiver.tag }}
+    env:
+    - name: REDIS_HOST
+      value: "{{ .Release.Name }}-db"

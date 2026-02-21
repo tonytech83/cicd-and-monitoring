@@ -1,0 +1,38 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "shekeriev/ubuntu-24.04"
+  config.vm.box_version = "24.04.3.20260201"
+  
+  config.vm.define "docker" do |docker|
+    docker.vm.hostname = "docker.do2.lab"
+    docker.vm.network "private_network", ip: "192.168.56.12"
+    docker.vm.synced_folder "vagrant/", "/vagrant"
+    docker.vm.provision "shell", path: "scripts/add-hosts.sh"
+    docker.vm.provision "shell", path: "scripts/install-prerequisites.sh"
+    docker.vm.provision "shell", path: "scripts/install-docker.sh"
+    docker.vm.provision "shell", path: "scripts/install-docker-registry.sh"
+    docker.vm.provision "shell", path: "scripts/install-gitea.sh"
+    docker.vm.provision "shell", path: "scripts/install-and-setup-k3s.sh"
+    docker.vm.provision "shell", path: "scripts/setup-gitea.sh"
+    docker.vm.provider "virtualbox" do |vbox|
+      vbox.name = "DO2-M5-2-Docker"
+      vbox.cpus = 2
+      vbox.memory = 6144
+    end
+  end
+
+  config.vm.define "jenkins" do |jenkins|
+    jenkins.vm.hostname = "jenkins.do2.lab"
+    jenkins.vm.network "private_network", ip: "192.168.56.11"
+    jenkins.vm.synced_folder "vagrant/", "/vagrant"
+    jenkins.vm.provision "shell", path: "scripts/add-hosts.sh"
+    jenkins.vm.provision "shell", path: "scripts/install-prerequisites.sh"
+    jenkins.vm.provision "shell", path: "scripts/install-jenkins.sh"
+    jenkins.vm.provision "shell", path: "scripts/setup-jenkins.sh"
+    jenkins.vm.provider "virtualbox" do |vbox|
+      vbox.name = "DO2-M5-1-Jenkins"
+      vbox.cpus = 2
+      vbox.memory = 2048
+    end
+  end
+
+end

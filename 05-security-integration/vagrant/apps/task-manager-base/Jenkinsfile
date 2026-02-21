@@ -1,0 +1,124 @@
+pipeline {
+    agent
+    {
+        label 'docker'
+    }
+    parameters {  
+        booleanParam(name: 'FORCE_ALL', defaultValue: false, description: 'Force the execution of every step as if there was a change') 
+        booleanParam(name: 'FORCE_FRONTEND', defaultValue: false, description: 'Force the execution of every step related to Frontend as if there was a change')   
+    }  
+    environment {
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        REGISTRY_URL = "192.168.56.12:5000"
+        RELEASE_NAME = "demo"
+    }
+    stages {
+        stage('Test the API') {
+            when { 
+                anyOf {
+                    changeset "services/api/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            agent {
+                docker {
+                    image 'python:3.12-slim'
+                    // This ensures the container runs as the same user as Jenkins 
+                    // to avoid permission issues with the workspace
+                    args '-u root' 
+                }
+            }
+            steps {
+                sh '''
+                # We are now INSIDE the python container
+                # The workspace is automatically mounted at /home/jenkins/agent/workspace/...
+                cd services/api
+                pip install flask redis pytest
+                python3 -m pytest tests/
+                '''
+            }
+        }
+        stage('Build the API') {
+            when { 
+                anyOf {
+                    changeset "services/api/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            steps {
+                sh '''
+				cd services/api
+				docker build -t ${REGISTRY_URL}/task-manager-api:${IMAGE_TAG} .
+				docker push ${REGISTRY_URL}/task-manager-api:${IMAGE_TAG}
+				'''
+            }
+        }
+        stage('Build the Archiver') {
+            when { 
+                anyOf {
+                    changeset "services/archiver/**"
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            steps {
+                sh '''
+				cd services/archiver
+				docker build -t ${REGISTRY_URL}/task-manager-archiver:${IMAGE_TAG} .
+				docker push ${REGISTRY_URL}/task-manager-archiver:${IMAGE_TAG}
+				'''
+            }
+        }
+        stage('Build the Frontend') {
+            when { 
+                anyOf {
+                    changeset "services/frontend/**" 
+                    expression { return params.FORCE_ALL }
+                    expression { return params.FORCE_FRONTEND }
+                }
+            }
+            steps {
+                sh '''
+				cd services/frontend
+				docker build -t ${REGISTRY_URL}/task-manager-frontend:${IMAGE_TAG} .
+				docker push ${REGISTRY_URL}/task-manager-frontend:${IMAGE_TAG}
+				'''
+            }
+        }
+        stage('Build the Monitor') {
+            when { 
+                anyOf {
+                    changeset "services/monitor/**"
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            steps {
+                sh '''
+				cd services/monitor
+				docker build -t ${REGISTRY_URL}/task-manager-monitor:${IMAGE_TAG} .
+				docker push ${REGISTRY_URL}/task-manager-monitor:${IMAGE_TAG}
+				'''
+            }
+        }
+        stage('Deploy the Frontend') {
+            when { 
+                anyOf {
+                    changeset "services/frontend/**" 
+                    expression { return params.FORCE_ALL }
+                    expression { return params.FORCE_FRONTEND }
+                }
+            }
+            steps {
+                sh '''
+                helm upgrade --install ${RELEASE_NAME} ./charts/task-manager --reuse-values --set frontend.tag=${IMAGE_TAG} --atomic --timeout 5m --wait
+                '''
+            }
+        }
+        stage('Clean')
+        {
+            steps
+            {
+                cleanWs()
+            }
+        }
+    }
+}
