@@ -1,0 +1,109 @@
+pipeline {
+    agent
+    {
+        label 'docker'
+    }
+    parameters {  
+        booleanParam(name: 'FORCE_ALL', defaultValue: false, description: 'Force the execution of every step as if there was a change')  
+    }  
+    environment {
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        DOCKER = "192.168.56.12"
+        REGISTRY_URL = "${DOCKER}:5000"
+    }
+    stages {
+        stage('Lint the Monitor') {
+            when { 
+                anyOf {
+                    changeset "services/monitor/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            agent {
+                docker {
+                    image 'golang:1.21-bookworm'
+                    label 'docker'
+                    args '-u root' 
+                }
+            }
+            steps {
+                sh '''
+                echo '* Run Gitleaks ...'
+                curl -L https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_linux_x64.tar.gz | tar xvzf - && \
+                mv gitleaks /usr/local/bin/
+                gitleaks dir ${WORKSPACE}/services -v
+
+                echo '* Dockerfile linting ...'
+                wget -O hadolint -q https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-linux-x86_64
+                install -o root -g root -m 0755 hadolint /usr/local/bin/hadolint
+                hadolint --ignore DL3018 ${WORKSPACE}/services/monitor/Dockerfile
+
+                echo '* Go code linting ...'
+                wget -q https://github.com/golangci/golangci-lint/releases/download/v2.10.0/golangci-lint-2.10.0-linux-amd64.deb
+                dpkg -i golangci-lint-2.10.0-linux-amd64.deb
+                cat > ~/.golangci.yaml <<EOF
+                version: "2"
+                linters:
+                default: all
+                disable:
+                    - copyloopvar
+                    - intrange
+                    - wsl
+                    - exhaustruct
+                    - gochecknoglobals
+                    - depguard
+                EOF
+                cd services/monitor
+                go mod tidy
+                golangci-lint run --config=~/.golangci.yaml main.go
+
+                echo '* Run DCLint ...'
+                wget -O dclint -q https://github.com/zavoloklom/docker-compose-linter/releases/download/v3.1.0/dclint-bullseye-amd64
+                install -o root -g root -m 0755 dclint /usr/local/bin/dclint
+                dclint ${WORKSPACE}/infrastructure/
+                '''
+            }
+        }
+        stage('Build the Monitor') {
+            when { 
+                anyOf {
+                    changeset "services/monitor/**"
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            steps {
+                sh '''
+				cd services/monitor
+				docker build -t ${REGISTRY_URL}/task-manager-monitor:${IMAGE_TAG} -t ${REGISTRY_URL}/task-manager-monitor:latest .
+				docker push ${REGISTRY_URL}/task-manager-monitor:${IMAGE_TAG}
+                docker push ${REGISTRY_URL}/task-manager-monitor:latest
+				'''
+            }
+        }
+        stage('Deploy the Monitor') {
+            when { 
+                anyOf {
+                    changeset "services/monitor/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            steps {
+                withCredentials([string(credentialsId: 'REDIS_PASSWORD', variable: 'DB_PASSWORD')]) {
+                    sh '''
+                    cd infrastructure
+                    export API_TAG=${IMAGE_TAG}
+                    docker compose up -d --no-deps monitor
+                    '''
+                }
+            }
+        }
+
+        stage('Clean')
+        {
+            steps
+            {
+                cleanWs()
+            }
+        }
+    }
+}

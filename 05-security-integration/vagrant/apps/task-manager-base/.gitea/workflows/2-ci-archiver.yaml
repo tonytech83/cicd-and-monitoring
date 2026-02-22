@@ -1,0 +1,27 @@
+name: Task Manager Archiver
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/archiver/**'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    uses: ./.gitea/workflows/archiver/ci-archiver-lint.yaml
+
+  # test:
+  #   needs: lint
+  #   uses: ./.gitea/workflows/archiver/ci-archiver-test.yaml
+
+  build:
+    needs: test
+    uses: ./.gitea/workflows/archiver/ci-archiver-build.yaml
+
+  deploy:
+    needs: build
+    uses: ./.gitea/workflows/archiver/ci-archiver-deploy.yaml
+    secrets: inherit

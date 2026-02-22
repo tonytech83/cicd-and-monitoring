@@ -1,0 +1,41 @@
+name: Task Manager Frontend Deploy
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+env:
+  SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+  RELEASE_NAME: demo
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Install SOPS & Age
+        run: |
+          curl -LO https://github.com/getsops/sops/releases/download/v3.11.0/sops-v3.11.0.linux.amd64
+          mv sops-v3.11.0.linux.amd64 /usr/local/bin/sops
+          chmod +x /usr/local/bin/sops
+          apt-get update && apt-get install age -y
+
+      - name: Install Helm and Helm Secrets Plugin
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 | bash
+          helm plugin install https://github.com/jkroepke/helm-secrets/releases/download/v4.7.4/secrets-4.7.4.tgz --verify=false
+
+      - name: Setup Kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+
+      - name: Deploy Helm Chart
+        run: |
+          hash=${{ gitea.sha }}
+          export FRONTEND_TAG=${hash::10}
+          helm secrets upgrade --install ${{ env.RELEASE_NAME }} ./charts/task-manager  --reuse-values --set frontend.tag=$FRONTEND_TAG -f ./charts/task-manager/secrets.enc.yaml --atomic --timeout 5m --wait
+

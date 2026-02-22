@@ -1,0 +1,87 @@
+pipeline {
+    agent
+    {
+        label 'docker'
+    }
+    parameters {  
+        booleanParam(name: 'FORCE_ALL', defaultValue: false, description: 'Force the execution of every step as if there was a change')  
+    }  
+    environment {
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        DOCKER = "192.168.56.12"
+        REGISTRY_URL = "${DOCKER}:5000"
+    }
+    stages {
+        stage('Lint the Frontend') {
+            when { 
+                anyOf {
+                    changeset "services/frontend/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            agent {
+                docker {
+                    image 'node:20.20-trixie'
+                    label 'docker'
+                    args '-u root' 
+                }
+            }
+            steps {
+                sh '''
+                echo '* Run Gitleaks ...'
+                curl -L https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_linux_x64.tar.gz | tar xvzf - && \
+                mv gitleaks /usr/local/bin/
+                gitleaks dir ${WORKSPACE}/services -v
+
+                echo '* Dockerfile linting ...'
+                wget -O hadolint -q https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-linux-x86_64
+                install -o root -g root -m 0755 hadolint /usr/local/bin/hadolint
+                hadolint ${WORKSPACE}/services/frontend/Dockerfile
+
+                echo '* Run DCLint ...'
+                wget -O dclint -q https://github.com/zavoloklom/docker-compose-linter/releases/download/v3.1.0/dclint-bullseye-amd64
+                install -o root -g root -m 0755 dclint /usr/local/bin/dclint
+                dclint ${WORKSPACE}/infrastructure/
+                '''
+            }
+        }
+        stage('Build the Frontend') {
+            when { 
+                anyOf {
+                    changeset "services/frontend/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            steps {
+                sh '''
+				cd services/frontend
+				docker build -t ${REGISTRY_URL}/task-manager-frontend:${IMAGE_TAG} -t ${REGISTRY_URL}/task-manager-frontend:latest .
+				docker push ${REGISTRY_URL}/task-manager-frontend:${IMAGE_TAG}
+                docker push ${REGISTRY_URL}/task-manager-frontend:latest
+				'''
+            }
+        }
+        stage('Deploy the Frontend') {
+            when { 
+                anyOf {
+                    changeset "services/frontend/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            steps {
+                sh '''
+                cd infrastructure
+                export API_TAG=${IMAGE_TAG}
+                docker compose up -d --no-deps frontend
+                '''
+            }
+        }
+        stage('Clean')
+        {
+            steps
+            {
+                cleanWs()
+            }
+        }
+    }
+}

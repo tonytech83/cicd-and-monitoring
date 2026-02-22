@@ -1,1 +1,0 @@
-This is the apps/task-manager-final from M4. Currently, it is the same as apps/task-manager-base

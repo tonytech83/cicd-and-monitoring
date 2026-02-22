@@ -9,8 +9,21 @@ spec:
   containers:
   - name: db
     image: redis:8.4.0-alpine
+    command:
+      - redis-server
+      - "/redis-config/redis.conf"
     ports:
     - containerPort: 6379
+    volumeMounts:
+    - mountPath: /redis-config
+      name: config
+  volumes:
+    - name: config
+      secret:
+        secretName: task-manager-secret
+        items:
+        - key: srv-password
+          path: redis.conf
 ---
 apiVersion: v1
 kind: Service

@@ -6,14 +6,30 @@ metadata:
     app: task-manager
     service: monitor
 spec:
+  securityContext:
+    runAsUser: 1000
   containers:
   - name: monitor
     image: 192.168.56.12:5000/task-manager-monitor:latest
+    securityContext:
+      readOnlyRootFilesystem: true
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "250m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
     ports:
     - containerPort: 8080
     env:
     - name: REDIS_HOST
       value: "db"
+    - name: REDIS_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: task-manager-secret
+          key: cli-password
 ---
 apiVersion: v1
 kind: Service

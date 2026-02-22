@@ -9,8 +9,9 @@ app = Flask(__name__)
 # these are giving us flexibility
 REDIS_HOST = os.getenv('REDIS_HOST', 'redis-db')
 REDIS_PORT = os.getenv('REDIS_PORT', 6379)
+REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', '')
 
-db = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+db = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD, decode_responses=True)
 
 def validate_task(data):
     if not data or not data.get("title"):

@@ -9,16 +9,11 @@ WORKDIR /app
 # Copy dependency files first
 # COPY go.mod go.sum* ./
 COPY go.mod *.go ./
-RUN go mod tidy
-
-# Copy source code
-# COPY . .
-
-# Build the binary with optimizations (removing symbol tables)
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o monitor .
+RUN go mod tidy && \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o monitor .
 
 # --- Stage 2: The Final Image ---
-FROM alpine:latest
+FROM alpine:3.23.3
 
 # Add CA certificates for secure connections
 RUN apk --no-cache add ca-certificates

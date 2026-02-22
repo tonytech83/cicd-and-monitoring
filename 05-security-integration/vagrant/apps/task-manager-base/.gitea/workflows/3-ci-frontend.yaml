@@ -1,0 +1,27 @@
+name: Task Manager Frontend
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/frontend/**'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    uses: ./.gitea/workflows/frontend/ci-frontend-lint.yaml
+
+  # test:
+  #   needs: lint
+  #   uses: ./.gitea/workflows/frontend/ci-frontend-test.yaml
+
+  build:
+    needs: test
+    uses: ./.gitea/workflows/frontend/ci-frontend-build.yaml
+
+  deploy:
+    needs: build
+    uses: ./.gitea/workflows/frontend/ci-frontend-deploy.yaml
+    secrets: inherit

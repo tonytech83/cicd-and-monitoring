@@ -12,3 +12,8 @@ spec:
     env:
     - name: REDIS_HOST
       value: "{{ .Release.Name }}-db"
+    - name: REDIS_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: "{{ .Release.Name }}-secret"
+          key: CLI_PASSWORD

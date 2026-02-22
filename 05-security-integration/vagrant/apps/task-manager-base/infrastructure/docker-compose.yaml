@@ -1,51 +1,63 @@
+name: The Task Manager services 
+
 services:
-  # Infrastructure
+  # Python API Service
+  api:
+    image: 192.168.56.12:5000/task-manager-api:${API_TAG:-latest}
+    container_name: task-manager-api
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${DB_PASSWORD}
+    networks:
+      - task-manager
+
+  # Java Archiver Service
+  archiver:
+    image: 192.168.56.12:5000/task-manager-archiver:${ARCHIVER_TAG:-latest}
+    container_name: task-manager-archiver
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${DB_PASSWORD}
+    networks:
+      - task-manager
+
+  # Frontend Service (Nginx)
+  frontend:
+    image: 192.168.56.12:5000/task-manager-frontend:${FRONTEND_TAG:-latest}
+    container_name: task-manager-frontend
+    depends_on:
+      - monitor
+      - redis
+    ports:
+      - target: 80
+        published: 8080
+        host_ip: 0.0.0.0
+    networks:
+      - task-manager
+
+  # Go Monitor Service
+  monitor:
+    image: 192.168.56.12:5000/task-manager-monitor:${MONITOR_TAG:-latest}
+    container_name: task-manager-monitor
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${DB_PASSWORD}
+    networks:
+      - task-manager
+
+  # Redis Database
   redis:
     image: redis:8.4.0-alpine
     container_name: task-manager-redis
     networks:
       - task-manager
-  # Python API Service
-  api:
-    image: 192.168.56.12:5000/task-manager-api:latest
-    container_name: task-manager-api
-    environment:
-      - REDIS_HOST=redis
-    depends_on:
-      - redis
-    networks:
-      - task-manager
-  # Go Monitor Service
-  monitor:
-    image: 192.168.56.12:5000/task-manager-monitor:latest
-    container_name: task-manager-monitor
-    environment:
-      - REDIS_HOST=redis
-    depends_on:
-      - redis
-    networks:
-      - task-manager
-  # Frontend Service (Nginx)
-  frontend:
-    image: 192.168.56.12:5000/task-manager-frontend:${FRONTEND_TAG:-latest}
-    container_name: task-manager-frontend
-    ports:
-      - "80:80"
-    depends_on:
-      - redis
-      - monitor
-    networks:
-      - task-manager
-  # Java Archiver Service
-  archiver:
-    image: 192.168.56.12:5000/task-manager-archiver:latest
-    container_name: task-manager-archiver
-    environment:
-      - REDIS_HOST=redis
-    depends_on:
-      - redis
-    networks:
-      - task-manager
+    command: redis-server --requirepass ${DB_PASSWORD}
 
 networks:
   task-manager:

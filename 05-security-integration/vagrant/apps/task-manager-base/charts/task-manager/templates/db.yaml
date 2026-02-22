@@ -9,8 +9,21 @@ spec:
   containers:
   - name: db
     image: redis:8.4.0-alpine
+    command:
+      - redis-server
+      - "/redis-config/redis.conf"
     ports:
     - containerPort: 6379
+    volumeMounts:
+    - mountPath: /redis-config
+      name: config
+  volumes:
+    - name: config
+      secret:
+        secretName: "{{ .Release.Name }}-secret"
+        items:
+        - key: SRV_PASSWORD
+          path: redis.conf
 ---
 apiVersion: v1
 kind: Service
