@@ -1,0 +1,26 @@
+name: Trivy Monitor Scan
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Trivy
+        run: |
+          wget https://github.com/aquasecurity/trivy/releases/download/v0.69.1/trivy_0.69.1_Linux-64bit.deb
+          dpkg -i trivy_0.69.1_Linux-64bit.deb
+          rm trivy_0.69.1_Linux-64bit.deb
+
+      - name: Docker image scan
+        run: |
+          trivy image \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            --ignorefile .trivyignore \
+            192.168.56.12:5000/task-manager-monitor:latest
