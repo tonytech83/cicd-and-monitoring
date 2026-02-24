@@ -16,6 +16,10 @@ The “CI/CD & Monitoring” course provides a comprehensive overview of buildin
 ## Table of Contents:
 
 - [`Introduction & Tool Landscape`](https://github.com/tonytech83/cicd-and-monitoring/tree/master/01-introduction-and-tool-landscape)
+- [`Build Pipelines`](https://github.com/tonytech83/cicd-and-monitoring/tree/master/02-build-pipelines)
+- [`Testing`](https://github.com/tonytech83/cicd-and-monitoring/tree/master/03-testing)
+- [`Release Automation`](https://github.com/tonytech83/cicd-and-monitoring/tree/master/04-release-automation)
+- [`Security Integration`](https://github.com/tonytech83/cicd-and-monitoring/tree/master/05-security-integration)
 
 <br/>
 <br/>
