@@ -1,0 +1,54 @@
+pipeline {
+    agent
+    {
+        label 'docker'
+    }
+    triggers {
+        cron('0 20 * * *')
+    }
+    environment {
+        DOCKER = "192.168.56.12"
+        REGISTRY_URL = "${DOCKER}:5000"
+    }
+    stages {
+        stage('Scan the API image') {
+            steps {
+                sh '''
+                curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin
+                grype ${REGISTRY_URL}/task-manager-api:latest --sort-by severity --fail-on high --ignore-states wont-fix
+				'''
+            }
+        }
+        stage('Scan the Archiver image') {
+            steps {
+                sh '''
+                curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin
+                grype ${REGISTRY_URL}/task-manager-archiver:latest --sort-by severity --fail-on high --ignore-states wont-fix
+				'''
+            }
+        }
+        stage('Scan the Frontend image') {
+            steps {
+                sh '''
+                curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin
+                grype ${REGISTRY_URL}/task-manager-frontend:latest --sort-by severity --fail-on high --ignore-states wont-fix
+				'''
+            }
+        }
+        stage('Scan the Monitor image') {
+            steps {
+                sh '''
+                curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin
+                grype ${REGISTRY_URL}/task-manager-monitor:latest --sort-by severity --fail-on high --ignore-states wont-fix
+				'''
+            }
+        }
+        stage('Clean')
+        {
+            steps
+            {
+                cleanWs()
+            }                       
+        }
+    }
+}

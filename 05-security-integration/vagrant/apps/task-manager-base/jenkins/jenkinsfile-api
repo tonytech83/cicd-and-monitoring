@@ -84,6 +84,18 @@ pipeline {
                 sh '''
 				cd services/api
 				docker build -t ${REGISTRY_URL}/task-manager-api:${IMAGE_TAG} -t ${REGISTRY_URL}/task-manager-api:latest .
+				'''
+            }
+        }
+        stage('Push the API image') {
+            when { 
+                anyOf {
+                    changeset "services/api/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            steps {
+                sh '''
 				docker push ${REGISTRY_URL}/task-manager-api:${IMAGE_TAG}
                 docker push ${REGISTRY_URL}/task-manager-api:latest
 				'''

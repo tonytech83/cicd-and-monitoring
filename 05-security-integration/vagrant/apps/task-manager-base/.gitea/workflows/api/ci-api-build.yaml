@@ -30,7 +30,7 @@ jobs:
           images: ${{ env.DOCKER_REGISTRY_URL }}/${{ env.DOCKER_IMAGE_NAME }}
           tags: |
             type=sha,enable=true,priority=100,prefix=,suffix=,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest
         env:
           DOCKER_METADATA_SHORT_SHA_LENGTH: 10
 
@@ -41,9 +41,11 @@ jobs:
           platforms: linux/amd64
           context: ./services/api
           file: ./services/api/Dockerfile
-          provenance: mode=max
-          sbom: true
           push: true
+          pull: true
+          no-cache: true
+          provenance: false
+          sbom: true
           tags: |
             ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

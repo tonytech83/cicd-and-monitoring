@@ -1,0 +1,5 @@
+# Vulnerabilities to ignore for the "fail-on" check
+ignore:
+  # Frontend
+  - vulnerability: CVE-2023-52356 # tiff
+  - vulnerability: CVE-2026-25646 # libpng

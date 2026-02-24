@@ -12,6 +12,9 @@ The “CI/CD & Monitoring” course provides a comprehensive overview of buildin
 
 - `Bash`
 - `Vagrant`
+- `Gitea`
+- `Jenkins`
+- `k8s`
 
 ## Table of Contents:
 
