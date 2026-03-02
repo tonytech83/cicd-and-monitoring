@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Task Tracker Pro</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
+        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; }
+        .card-archive { border-left: 5px solid #6c757d; opacity: 0.8; }
+        .status-msg { padding: 10px; margin-bottom: 20px; border-radius: 5px; display: none; }
+        .error { background: #f8d7da; color: #721c24; }
+        .success { background: #d4edda; color: #155724; }
+        button { cursor: pointer; margin-right: 5px; }
+        .status-healthy { color: green; }
+        .status-unhealthy { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Microservice Task Tracker</h1>
+
+    <div id="api-feedback" class="status-msg"></div>
+    
+    <div class="card">
+        <h2>System Status</h2>
+        <p>Go Monitor: <span id="health">Checking...</span></p>
+        <p>Total Tasks in Redis: <span id="metrics">0</span></p>
+    </div>
+
+    <div class="card">
+        <h2>Add New Task (via Python API)</h2>
+        <input type="text" id="title" placeholder="Task Title">
+        <select id="priority">
+            <option value="Low">Low</option>
+            <option value="High">High</option>
+        </select>
+        <input type="text" id="date" placeholder="Due Date (YYYY-MM-DD)">
+        <button onclick="addTask()">Create Task</button>
+    </div>
+
+    <h2>Active Tasks</h2>
+    <div id="task-list"></div>
+
+    <script>
+        // Helper to show API messages
+        function showMessage(msg, isError = false) {
+            const box = document.getElementById('api-feedback');
+            box.innerText = msg;
+            box.className = `status-msg ${isError ? 'error' : 'success'}`;
+            box.style.display = 'block';
+            setTimeout(() => { box.style.display = 'none'; }, 4000);
+        }
+
+        function loadData() {
+            // Stats from Go
+            fetch('/api/go/health').then(r => r.json()).then(d => {
+                document.getElementById('health').innerText = d.status;
+                document.getElementById('health').className = 'status-' + d.status;
+            });
+            // fetch('/api/go/metrics').then(r => r.json()).then(d => {
+            //     document.getElementById('metrics').innerText = d.total_tasks;
+            // });
+            fetch('/api/go/metrics')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('metrics').innerHTML = `
+                        Total: ${data.total} | 
+                        <span style="color:green">Active: ${data.active}</span> | 
+                        <span style="color:gray">Finished: ${data.finished}</span>
+                    `;
+            });
+
+            // Tasks from Python
+            fetch('/api/python/tasks')
+                .then(r => r.json())
+                .then(tasks => {
+                    const list = document.getElementById('task-list');
+                    list.innerHTML = tasks.length === 0 ? '<p>No active tasks found.</p>' : '';
+                    tasks.forEach(t => {
+                        list.innerHTML += `
+                            <div class="card">
+                                <strong>${t.title}</strong> (${t.priority}) - <em>${t.status}</em>
+                                <div style="margin-top:10px">
+                                    <button onclick="markComplete('${t.id}')" ${(t.status == 'Completed'? 'disabled': '')}>Complete</button>
+                                    <button onclick="deleteTask('${t.id}')" style="background:#ffcccc">Delete</button>
+                                </div>
+                            </div>`;
+                    });
+                });
+        }
+
+        function addTask() {
+            const payload = {
+                title: document.getElementById('title').value,
+                priority: document.getElementById('priority').value,
+                due_date: document.getElementById('date').value
+            };
+            // Send to Python API (Port 5000)
+            //fetch('http://localhost:5000/tasks', {
+            //fetch('http://python-task:5000/tasks', {
+            fetch('/api/python/tasks', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            }).then(async r => {
+                const data = await r.json();
+                if (r.ok) {
+                    showMessage(`Success: Task ${data.id} created!`);
+                    //location.reload();
+                    loadData();
+                } else {
+                    showMessage(`Error: ${data.message}`, true);
+                }
+            });
+        }
+        
+        function markComplete(id) {
+            fetch(`/api/python/tasks/${id}/complete`, { method: 'PUT' })
+                .then(r => r.json())
+                .then(d => {
+                    showMessage("Task marked as Completed. Archiver will process it.");
+                    loadData();
+                });
+        }
+
+        function deleteTask(id) {
+            fetch(`/api/python/tasks/${id}`, { method: 'DELETE' })
+                .then(r => r.json())
+                .then(d => {
+                    showMessage(d.message || d.error);
+                    loadData();
+                });
+        }
+
+        //setInterval(loadData, 5000); // Polling for auto-refresh
+        loadData();
+    </script>
+</body>
+</html>

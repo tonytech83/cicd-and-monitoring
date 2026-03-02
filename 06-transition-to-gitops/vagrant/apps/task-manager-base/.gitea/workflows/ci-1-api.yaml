@@ -1,0 +1,27 @@
+name: Task Manager API
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/api/**'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    uses: ./.gitea/workflows/api/1-lint.yaml
+
+  test:
+    needs: lint
+    uses: ./.gitea/workflows/api/2-test.yaml
+
+  build:
+    needs: test
+    uses: ./.gitea/workflows/api/3-build.yaml
+
+  deploy:
+    needs: build
+    uses: ./.gitea/workflows/api/4-deploy.yaml
+    secrets: inherit

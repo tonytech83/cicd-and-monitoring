@@ -1,0 +1,56 @@
+name: task-manager
+services:
+  # Python API Service
+  api:
+    image: 192.168.56.12:5000/task-manager-api:${API_TAG:-latest}
+    container_name: task-manager-api
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${DB_PASSWORD}
+    networks:
+      - task-manager
+  # Java Archiver Service
+  archiver:
+    image: 192.168.56.12:5000/task-manager-archiver:${ARCHIVER_TAG:-latest}
+    container_name: task-manager-archiver
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${DB_PASSWORD}
+    networks:
+      - task-manager
+  # Frontend Service (Nginx)
+  frontend:
+    image: 192.168.56.12:5000/task-manager-frontend:${FRONTEND_TAG:-latest}
+    container_name: task-manager-frontend
+    depends_on:
+      - monitor
+      - redis
+    ports:
+      - '0.0.0.0:8080:80'
+    networks:
+      - task-manager
+  # Go Monitor Service
+  monitor:
+    image: 192.168.56.12:5000/task-manager-monitor:${MONITOR_TAG:-latest}
+    container_name: task-manager-monitor
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${DB_PASSWORD}
+    networks:
+      - task-manager
+  redis:
+    image: redis:8.4.0-alpine
+    container_name: task-manager-redis
+    networks:
+      - task-manager
+    command: redis-server --requirepass ${DB_PASSWORD}
+
+networks:
+  task-manager:
+    driver: bridge
