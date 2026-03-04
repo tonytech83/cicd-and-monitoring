@@ -16,7 +16,7 @@ Explore further the **GitOps** principles by executing the following
 
 - Define **Argo CD** application that interacts with the infrastructure repository
 
-***\* The focus should be on achieving the required and not on doing it in the most automated way possible***
+**_\* The focus should be on achieving the required and not on doing it in the most automated way possible_**
 
 ## Proof
 
@@ -25,3 +25,7 @@ Prepare a document that shows what you accomplished and how you did it. It can i
 - The commands you used to achieve the above tasks
 
 - A few pictures showing intermediary steps or results
+
+## Solution
+
+1. [Task 1](./task1/task1.md)

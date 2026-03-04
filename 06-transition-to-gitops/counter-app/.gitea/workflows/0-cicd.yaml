@@ -1,0 +1,27 @@
+name: Counter
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+on:
+  push:
+    branches: [main]
+    paths:
+      - './**'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    uses: ./.gitea/workflows/1-lint.yaml
+
+  test:
+    needs: lint
+    uses: ./.gitea/workflows/2-test.yaml
+
+  build:
+    needs: test
+    uses: ./.gitea/workflows/3-build.yaml
+
+  change:
+    needs: build
+    uses: ./.gitea/workflows/4-change.yaml
+    secrets: inherit

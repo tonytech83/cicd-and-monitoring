@@ -1,0 +1,35 @@
+name: Counter Change
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+env:
+  GITEA_URL: 192.168.56.12:3000
+  REGISTRY_URL: 192.168.56.12:5000
+
+jobs:
+  change:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update the image tag
+        run: |
+          # 0. Get the tag
+          hash=${{ gitea.sha }}
+          export COUNTER_TAG=${hash::10}
+
+          # 1. Setup Auth and Clone Infra Repo
+          git config --global user.name "Gitea CI"
+          git config --global user.email "ci@gitea.local"
+
+          git clone http://${{ secrets.REPO_USER }}:${{ secrets.REPO_PASS }}@${{ env.GITEA_URL }}/${{ secrets.REPO_USER }}/counter-infra.git
+          cd counter-infra
+
+          # 2. Update Version using yq
+          yq -i ".counter.tag = \"$COUNTER_TAG\"" charts/counter/values.yaml
+
+          # 3. Commit and Push back to Infra Repo
+          git diff --quiet && echo "No changes, skipping push" && exit 0
+          git add .
+          git commit -m "deploy: update api to $COUNTER_TAG from app repo"
+          git push origin main

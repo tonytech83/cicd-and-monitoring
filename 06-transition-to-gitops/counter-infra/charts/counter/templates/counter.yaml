@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-counter
+  labels:
+    app: {{ .Release.Name }}-counter
+    service: counter-svc
+spec:
+  replicas: {{ .Values.counter.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-counter
+      service: counter-svc
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-counter
+        service: counter-svc
+    spec:
+      securityContext:
+        runAsUser: 1000
+      containers:
+      - name: counter
+        image: {{ .Values.global.registry }}/counter:{{ .Values.counter.tag }}
+        securityContext:
+          readOnlyRootFilesystem: true
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-couner-pod
+spec:
+  selector:
+    app: {{ .Release.Name }}-counter
+    service: counter-svc
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: NodePort

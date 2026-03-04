@@ -1,0 +1,5 @@
+global:
+  registry: "192.168.56.12:5000"
+counter:
+  replicaCount: 3
+  tag: "6a1f3f451b"
