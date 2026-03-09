@@ -1,0 +1,4 @@
+key.txt
+charts/task-manager/secrets.yaml
+kustomize/base/secret.yaml
+manifests/secret.yaml

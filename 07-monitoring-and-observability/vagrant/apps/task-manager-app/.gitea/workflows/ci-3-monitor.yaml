@@ -1,0 +1,27 @@
+name: Task Manager Monitor
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+on:
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - 'services/monitor/**'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    uses: ./.gitea/workflows/mon/1-lint.yaml
+
+  test:
+    needs: lint
+    uses: ./.gitea/workflows/mon/2-test.yaml
+
+  build:
+    needs: test
+    uses: ./.gitea/workflows/mon/3-build.yaml
+
+  deploy:
+    needs: build
+    uses: ./.gitea/workflows/mon/4-change.yaml
+    secrets: inherit

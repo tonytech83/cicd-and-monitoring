@@ -1,0 +1,17 @@
+name: Task Manager Archiver Chagne
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+env:
+  GITEA_URL: 192.168.56.12:3000
+  REGISTRY_URL: 192.168.56.12:5000
+
+jobs:
+  change:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update the image tag
+        run: |
+          echo "* Push a change ..."

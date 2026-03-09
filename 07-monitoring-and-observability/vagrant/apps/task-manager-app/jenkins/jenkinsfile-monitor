@@ -1,0 +1,92 @@
+pipeline {
+    agent
+    {
+        label 'docker'
+    }
+    parameters {  
+        booleanParam(name: 'FORCE_ALL', defaultValue: false, description: 'Force the execution of every step as if there was a change')  
+    }  
+    environment {
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        DOCKER = "192.168.56.12"
+        REGISTRY_URL = "${DOCKER}:5000"
+    }
+    stages {
+        stage('Lint the Monitor') {
+            when { 
+                anyOf {
+                    changeset "services/monitor/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            agent {
+                docker {
+                    image 'golang:1.21-bookworm'
+                    label 'docker'
+                    args '-u root' 
+                }
+            }
+            steps {
+                sh '''
+                echo '* Do some important linting stuff ...'
+                '''
+            }
+        }
+        stage('Test the Monitor') {
+            when { 
+                anyOf {
+                    changeset "services/monitor/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            agent {
+                docker {
+                    image 'eclipse-temurin:21-jdk-jammy'
+                    label 'docker'
+                    args '-u root' 
+                }
+            }
+            steps {
+                sh '''
+                echo '* Do some important testing stuff ...'
+                '''
+            }
+        }
+        stage('Build the Monitor') {
+            when { 
+                anyOf {
+                    changeset "services/monitor/**"
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            steps {
+                sh '''
+				cd services/monitor
+				docker build -t ${REGISTRY_URL}/task-manager-monitor:${IMAGE_TAG} -t ${REGISTRY_URL}/task-manager-monitor:latest .
+				docker push ${REGISTRY_URL}/task-manager-monitor:${IMAGE_TAG}
+                docker push ${REGISTRY_URL}/task-manager-monitor:latest
+				'''
+            }
+        }
+        stage('Change the Monitor') {
+            when { 
+                anyOf {
+                    changeset "services/monitor/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            steps {
+                sh '''
+                echo "* Push a change ..."
+                '''
+            }
+        }
+    }
+    post
+    {
+        always
+        {
+            cleanWs()
+        }
+    }
+}

@@ -1,0 +1,110 @@
+pipeline {
+    agent
+    {
+        label 'docker'
+    }
+    parameters {  
+        booleanParam(name: 'FORCE_ALL', defaultValue: false, description: 'Force the execution of every step as if there was a change')  
+    }  
+    environment {
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        DOCKER = "192.168.56.12"
+        REGISTRY_URL = "${DOCKER}:5000"
+    }
+    stages {
+        stage('Lint the API') {
+            when { 
+                anyOf {
+                    changeset "services/api/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            agent {
+                docker {
+                    image 'python:3.12'
+                    label 'docker'
+                    args '-u root' 
+                }
+            }
+            steps {
+                sh '''
+                echo '* Do some important linting stuff ...'
+                '''
+            }
+        }
+        stage('Test the API') {
+            when { 
+                anyOf {
+                    changeset "services/api/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            agent {
+                docker {
+                    image 'python:3.12-slim'
+                    label 'docker'
+                    args '-u root' 
+                }
+            }
+            steps {
+                sh '''
+                echo '* Do some important testing stuff ...'
+                '''
+            }
+        }
+        stage('Build the API') {
+            when { 
+                anyOf {
+                    changeset "services/api/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            steps {
+                sh '''
+				cd services/api
+				docker build -t ${REGISTRY_URL}/task-manager-api:${IMAGE_TAG} -t ${REGISTRY_URL}/task-manager-api:latest .
+				docker push ${REGISTRY_URL}/task-manager-api:${IMAGE_TAG}
+                docker push ${REGISTRY_URL}/task-manager-api:latest
+				'''
+            }
+        }
+        stage('Change the API') {
+            when { 
+                anyOf {
+                    changeset "services/api/**" 
+                    expression { return params.FORCE_ALL }
+                }
+            }
+            steps {
+                withCredentials([
+                    usernamePassword(credentialsId: 'vagrant', passwordVariable: 'REPO_PASS', usernameVariable: 'REPO_USER'),
+                ]) {
+                    script {
+                        sh "git clone http://${REPO_USER}:${REPO_PASS}@192.168.56.12:3000/vagrant/task-manager-infra.git infra-repo"
+                        
+                        dir('infra-repo') {
+                            sh "yq -iy '( .spec.containers[] | select(.name == \"api\") ).image = \"${REGISTRY_URL}/task-manager-api:${BUILD_NUMBER}\"' manifests/api.yaml"
+                            sh "yq -iy '.api.tag = \"${BUILD_NUMBER}\"' charts/task-manager/values.yaml"
+                            sh "yq -iy '( .images[] | select(.name == \"${REGISTRY_URL}/task-manager-api\") ).newTag = \"${BUILD_NUMBER}\"' kustomize/overlays/prd/kustomization.yaml"
+                            
+                            sh """
+                                git config user.name "Jenkins CI"
+                                git config user.email "ci@jenkins.local"
+                                git add .
+                                git commit -m "jenkins: update api to build ${BUILD_NUMBER}"
+                                git push origin main
+                            """
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post
+    {
+        always
+        {
+            cleanWs()
+        }
+    }
+}
