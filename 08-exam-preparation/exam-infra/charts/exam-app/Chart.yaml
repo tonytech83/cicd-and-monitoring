@@ -1,0 +1,6 @@
+apiVersion: v2
+name: Exam app
+description: A Helm chart for a multi-service Exam App
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

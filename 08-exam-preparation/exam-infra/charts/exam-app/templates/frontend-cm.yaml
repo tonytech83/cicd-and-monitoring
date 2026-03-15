@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-fe-cm
+data:
+  default.conf: |
+    server {
+      listen 80;
+
+      # Kubernetes internal DNS resolver
+      resolver 10.96.0.10 valid=5s;
+
+      location / {
+        root /usr/share/nginx/html;
+        index index.html;
+      }
+
+      location /api/ {
+        rewrite ^/api/(.*) /$1 break;
+        proxy_pass http://{{ .Release.Name }}-be:5000;
+        proxy_method $request_method;
+      }
+    }

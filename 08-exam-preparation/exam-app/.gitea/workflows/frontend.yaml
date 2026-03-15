@@ -1,0 +1,74 @@
+name: Exam App Frontend Workflow
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/frontend/**'
+  workflow_dispatch:
+
+env:
+  DOCKER: 192.168.56.12
+  GITEA_URL: ${{env.DOCKER }}:3000
+  REGISTRY_URL: ${{env.DOCKER }}:5000
+  DOCKER_IMAGE_NAME: notes-fe
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.calc.outputs.short_sha }}
+    steps:
+      - id: calc
+        run: echo "short_sha=${GITHUB_SHA:0:10}" >> $GITHUB_OUTPUT
+
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: ${{ needs.setup.outputs.image_tag }}
+    steps:
+      - name: Chack out the code
+        uses:  actions/checkout@v6 # Check the action!
+
+      - name: Build the image
+        run: |
+          cd services/frontend
+          docker build -t ${{ env.REGISTRY_URL }}/${{ env.DOCKER_IMAGE_NAME }}:$IMAGE_TAG -t ${{ env.REGISTRY_URL }}/${{ env.DOCKER_IMAGE_NAME }}:latest .
+        
+  push:
+    needs: [setup, build]
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: ${{ needs.setup.outputs.image_tag }}
+
+    steps:
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.REGISTRY_URL }}/${{ env.DOCKER_IMAGE_NAME }}:$IMAGE_TAG
+          docker push ${{ env.REGISTRY_URL }}/${{ env.DOCKER_IMAGE_NAME }}:latest
+
+  change:
+    needs: [setup, push]
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: ${{ needs.setup.outputs.image_tag }}
+
+    steps:
+      - name: Update the image tag
+        run: |
+          # 1. Setup Auth and Clone Infra Repo
+          git config --global user.name "Gitea CI"
+          git config --global user.email "ci@gitea.local"
+
+          git clone http://${{ secrets.REPO_USER }}:${{ secrets.REPO_PASS }}@${{ env.GITEA_URL }}/${{ secrets.REPO_USER }}/exam-infra.git
+          cd exam-infra
+
+          # 2. Update Version using yq
+          yq -i ".frontend.tag = \"$IMAGE_TAG\"" charts/exam-app/values.yaml
+
+          # 3. Commit and Push back to Infra Repo
+          git diff --quiet && echo "No changes, skipping push" && exit 0
+          git add .
+          git commit -m "gitea: update chart frontend tag to ${IMAGE_TAG}"
+          git push origin main

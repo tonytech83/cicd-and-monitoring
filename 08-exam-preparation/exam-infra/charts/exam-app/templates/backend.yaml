@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Release.Name }}-be
+  labels:
+    app: {{ .Release.Name }}-notes
+    service: be
+spec:
+  containers:
+  - name: be
+    image: {{ .Values.global.registry }}/notes-be:{{ .Values.backend.tag }}
+    ports:
+    - containerPort: 5000
+    env:
+    - name: REDIS_HOST
+      value: "{{ .Release.Name }}-db"
+    - name: REDIS_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: "{{ .Release.Name }}-db-secret"
+          key: CLI_PASSWORD
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-be
+  labels:
+    service: be
+spec:
+  selector:
+    app: {{ .Release.Name }}-notes
+    service: be
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP

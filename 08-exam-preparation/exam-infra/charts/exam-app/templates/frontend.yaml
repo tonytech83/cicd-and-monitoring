@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Release.Name }}-fe
+  labels:
+    app: {{ .Release.Name }}-notes
+    service: fe
+spec:
+  containers:
+  - name: fe
+    image: {{ .Values.global.registry }}/notes-fe:{{ .Values.frontend.tag }}
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: nginx-config
+      mountPath: /etc/nginx/conf.d/default.conf
+      subPath: default.conf
+  volumes:
+  - name: nginx-config
+    configMap:
+      name: {{ .Release.Name }}-fe-cm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-fe
+spec:
+  selector:
+    app: {{ .Release.Name }}-notes
+    service: fe
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: NodePort
